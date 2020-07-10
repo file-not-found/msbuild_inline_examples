@@ -1,0 +1,40 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="MSBuild">
+   <ListDomainUsers />
+  </Target>
+  <UsingTask
+    TaskName="ListDomainUsers"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="C:\Windows\Microsoft.Net\Framework\v4.0.30319\Microsoft.Build.Tasks.v4.0.dll" >
+    <ParameterGroup/>
+    <Task>
+      <Reference Include="System.DirectoryServices" />
+      <Using Namespace="System" />
+      <Using Namespace="System.DirectoryServices" />
+      <Using Namespace="System.DirectoryServices.ActiveDirectory" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+            Domain computerDomain = Domain.GetComputerDomain();
+            Console.WriteLine(String.Format("Domain: {0}", computerDomain.Name));
+
+            DirectoryEntry dirRootEntry = new DirectoryEntry("LDAP://RootDSE");
+            Object oDN = dirRootEntry.Properties["defaultNamingContext"].Value;
+
+            DirectoryEntry start = new DirectoryEntry("LDAP://" + oDN);
+            DirectorySearcher searcher = new DirectorySearcher(start);
+            searcher.Filter = "(objectClass=user)";
+
+            foreach(SearchResult result in searcher.FindAll()) {
+                string path = result.Path;
+                Console.WriteLine(path);
+                DirectoryEntry userEntry = new DirectoryEntry(path);
+                Object description = userEntry.Properties["description"].Value;
+                if (description != null) {
+                    Console.WriteLine(" description: " + description);
+                }
+            }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>

